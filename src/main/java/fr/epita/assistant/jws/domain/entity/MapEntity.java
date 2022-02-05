@@ -6,8 +6,7 @@ import lombok.With;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @With @NoArgsConstructor @AllArgsConstructor
 public class MapEntity
@@ -25,11 +24,31 @@ public class MapEntity
             map.add(mapModel.map);
         });
 
-        MapEntity mapEntity = new MapEntity()
-                .withMap(map)
-                .withIds(ids);
+        for (int i = 0; i < map.size() - 1; i++)
+        {
+            if (ids.get(i) > ids.get(i + 1))
+            {
+                for (int j = 0; j < map.size() - 1; j++)
+                {
+                    if (ids.get(i) < ids.get(j))
+                    {
+                        Long temp = ids.get(i);
+                        ids.remove(i);
+                        ids.add(i, ids.get(j));
+                        ids.remove(j);
+                        ids.add(j, temp);
+                        //
+                        String temp2 = map.get(i);
+                        map.remove(i);
+                        map.add(i, map.get(j));
+                        map.remove(j);
+                        map.add(j, temp2);
+                    }
+                }
+            }
+        }
 
-        return mapEntity;
+        return new MapEntity().withMap(map).withIds(ids);
     }
 
     public static MapEntity MapFromPath (String fileName)

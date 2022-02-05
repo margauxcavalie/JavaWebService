@@ -1,30 +1,33 @@
 package fr.epita.assistant.jws.domain.service;
 import fr.epita.assistant.jws.data.model.GameModel;
+import fr.epita.assistant.jws.data.model.MapModel;
 import fr.epita.assistant.jws.data.model.PlayerModel;
 import fr.epita.assistant.jws.data.repository.GameRepository;
+import fr.epita.assistant.jws.data.repository.MapRepository;
+import fr.epita.assistant.jws.data.repository.PlayerRepository;
 import fr.epita.assistant.jws.domain.entity.GameEntity;
 import fr.epita.assistant.jws.domain.entity.GameState;
 import fr.epita.assistant.jws.domain.entity.MapEntity;
 import fr.epita.assistant.jws.domain.entity.PlayerEntity;
+import fr.epita.assistant.jws.domain.service.exceptions.DifferentGamesException;
 import fr.epita.assistant.jws.domain.service.exceptions.UnknownGameException;
-import fr.epita.assistant.jws.presentation.rest.GameEndpoint;
-import fr.epita.assistant.jws.presentation.rest.response.GameListReponse;
-import org.eclipse.microprofile.config.inject.ConfigProperties;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
-import javax.ws.rs.PUT;
 import java.awt.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 @ApplicationScoped
 public class GameService
 {
     @Inject GameRepository gameRepository;
+    @Inject MapRepository mapRepository;
+    @Inject PlayerRepository playerRepository;
 
     @ConfigProperty(name="JWS_MAP_PATH") String JWS_MAP_PATH;
 
@@ -61,7 +64,7 @@ public class GameService
         return gameEntities;
     }
 
-    public GameEntity GetGameWithId(Long id) throws UnknownGameException
+    public GameEntity getGameWithId(Long id) throws UnknownGameException
     {
         GameModel gameModel = gameRepository.findById(id);
         if (gameModel == null)
@@ -74,7 +77,30 @@ public class GameService
     {
         GameModel gameModel = gameRepository.findById(id);
         gameModel.state = "RUNNING";
-        gameRepository.persist(gameModel);
+        return GameEntity.ModelToEntity(gameModel);
+    }
+
+    @Transactional
+    public GameEntity putBomb(Long gameId, Long playerId) throws DifferentGamesException
+    {
+        GameModel gameModel = gameRepository.findById(gameId);
+        PlayerModel playerModel = playerRepository.findById(playerId);
+
+        // Sort
+        Stream<MapModel> mapsSorted = gameModel.map.stream().sorted(Comparator.comparing(MapModel::getId));
+        gameModel.map = mapsSorted.toList();
+
+        // Replace map
+        String oldMap = MapModel.decodeMapRLE(gameModel.map.get(playerModel.posY).map);
+        String newMap = oldMap.substring(0, playerModel.posX) + 'B' + oldMap.substring(playerModel.posX + 1);
+        gameModel.map.get(playerModel.posY).map = MapModel.encodeMapRLE(newMap);
+
+        mapsSorted = gameModel.map.stream().sorted(Comparator.comparing(MapModel::getId));
+        gameModel.map = mapsSorted.toList();
+
+        // Change player's lastBomb
+        playerModel.lastBomb = LocalDateTime.now();
+
         return GameEntity.ModelToEntity(gameModel);
     }
 }

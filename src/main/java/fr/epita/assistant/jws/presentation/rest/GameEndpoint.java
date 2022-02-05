@@ -4,16 +4,23 @@ import fr.epita.assistant.jws.domain.entity.GameState;
 import fr.epita.assistant.jws.domain.entity.PlayerEntity;
 import fr.epita.assistant.jws.domain.service.GameService;
 import fr.epita.assistant.jws.domain.service.PlayerService;
+import fr.epita.assistant.jws.domain.service.exceptions.DifferentGamesException;
+import fr.epita.assistant.jws.domain.service.exceptions.NullPlayerException;
+import fr.epita.assistant.jws.domain.service.exceptions.UnallowedMoveException;
 import fr.epita.assistant.jws.domain.service.exceptions.UnknownGameException;
 import fr.epita.assistant.jws.presentation.rest.request.CreateGameRequest;
 import fr.epita.assistant.jws.presentation.rest.request.JoinGameRequest;
+import fr.epita.assistant.jws.presentation.rest.request.MovePlayerRequest;
+import fr.epita.assistant.jws.presentation.rest.request.PutBombRequest;
 import fr.epita.assistant.jws.presentation.rest.response.GameDetailResponse;
 import fr.epita.assistant.jws.presentation.rest.response.GameListReponse;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +31,8 @@ public class GameEndpoint
 {
     @Inject GameService gameService;
     @Inject PlayerService playerService;
+
+    @ConfigProperty(name="JWS_TICK_DURATION") int JWS_TICK_DURATION;
 
     @GET
     public List<GameListReponse> getAllGames()
@@ -45,7 +54,7 @@ public class GameEndpoint
         Long id = gameService.createGame(createGameRequest.name);
         GameEntity gameEntity = null;
         try {
-            gameEntity = gameService.GetGameWithId(id);
+            gameEntity = gameService.getGameWithId(id);
         } catch (UnknownGameException e) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
@@ -60,7 +69,7 @@ public class GameEndpoint
         GameEntity gameEntity = null;
         try
         {
-            gameEntity = gameService.GetGameWithId(id);
+            gameEntity = gameService.getGameWithId(id);
         }
         catch (UnknownGameException e)
         {
@@ -78,18 +87,14 @@ public class GameEndpoint
             return Response.status(Response.Status.BAD_REQUEST).build();
 
         GameEntity gameEntity = null;
-        try
-        {
-            gameEntity = gameService.GetGameWithId(id);
-        }
-        catch (UnknownGameException e)
-        {
+        try {
+            gameEntity = gameService.getGameWithId(id);
+        } catch (UnknownGameException e) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
 
         if (gameEntity.state.equals(GameState.FINISHED) ||
-                gameEntity.state.equals(GameState.RUNNING) ||
-                    gameEntity.players.size() >= 4)
+                gameEntity.state.equals(GameState.RUNNING) || gameEntity.players.size() >= 4)
             return Response.status(Response.Status.BAD_REQUEST).build();
 
         gameEntity = playerService.addPlayer(joinGameRequest.name, gameEntity);
@@ -104,7 +109,7 @@ public class GameEndpoint
         GameEntity gameEntity = null;
         try
         {
-            gameEntity = gameService.GetGameWithId(id);
+            gameEntity = gameService.getGameWithId(id);
         }
         catch (UnknownGameException e)
         {
@@ -117,4 +122,93 @@ public class GameEndpoint
         return Response.status(Response.Status.OK).entity(gameDetailResponse).build();
     }
 
+    @POST @Path("/{gameId}/players/{playerId}/bomb")
+    public Response putBomb(@PathParam("gameId") Long gameId,
+                            @PathParam("playerId") Long playerId, PutBombRequest putBombRequest)
+    {
+        PlayerEntity playerEntity = null;
+        try
+        {
+            playerEntity = playerService.getPlayerWithId(playerId);
+        }
+        catch (NullPlayerException e)
+        {
+            return Response.status(Response.Status.NOT_FOUND).build(); //ERROR 404
+        }
+
+        if (putBombRequest == null || playerEntity.name == null)
+            return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
+
+        GameEntity gameEntity = null;
+        try
+        {
+            gameEntity = gameService.getGameWithId(gameId);
+        }
+        catch (UnknownGameException e)
+        {
+            return Response.status(Response.Status.NOT_FOUND).build(); // ERROR 404
+        }
+
+        if (gameEntity.state.equals(GameState.FINISHED) ||
+                gameEntity.players.size() > 4 ||
+                    playerEntity.coord.x != putBombRequest.posX ||
+                        playerEntity.coord.y != putBombRequest.posY)
+            return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
+
+        if (playerEntity.lastBomb != null)
+            if (LocalDateTime.now().minusSeconds(JWS_TICK_DURATION / 1000L).isBefore(playerEntity.lastBomb))
+                return Response.status(Response.Status.TOO_MANY_REQUESTS).build(); // ERROR 429
+
+        try
+        {
+            gameEntity = gameService.putBomb(gameId, playerId);
+        }
+        catch (DifferentGamesException e)
+        {
+            return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
+        }
+
+        GameDetailResponse gameDetailResponse = GameDetailResponse.EntityToDTO(gameEntity);
+        return Response.status(Response.Status.OK).entity(gameDetailResponse).build();
+    }
+
+    @POST @Path("/{gameId}/players/{playerId}/move")
+    public Response movePlayer(@PathParam("gameId") Long gameId,
+                               @PathParam("playerId") Long playerId, MovePlayerRequest movePlayerRequest)
+    {
+        if (movePlayerRequest == null || movePlayerRequest.posX < 0 || movePlayerRequest.posY < 0)
+            return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
+
+
+        PlayerEntity playerEntity = null;
+        try {
+            playerEntity = playerService.getPlayerWithId(playerId);
+        } catch (NullPlayerException e) {
+            return Response.status(Response.Status.NOT_FOUND).build(); //ERROR 404
+        }
+        GameEntity gameEntity = null;
+        try {
+            gameEntity = gameService.getGameWithId(gameId);
+        } catch (UnknownGameException e) {
+            return Response.status(Response.Status.NOT_FOUND).build(); // ERROR 404
+        }
+
+        // Check for errors
+        if (gameEntity.state.equals(GameState.FINISHED) ||
+                gameEntity.state.equals(GameState.STARTING) || playerEntity.lives <= 0)
+            return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
+
+        if (playerEntity.lastMovement != null)
+            if (LocalDateTime.now().minusSeconds(JWS_TICK_DURATION / 1000L).isBefore(playerEntity.lastMovement))
+                return Response.status(Response.Status.TOO_MANY_REQUESTS).build(); // ERROR 429
+
+
+        try {
+            gameEntity = playerService.movePlayer(playerId, gameId, movePlayerRequest);
+        } catch (UnallowedMoveException | DifferentGamesException e) {
+            return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
+        }
+        GameDetailResponse gameDetailResponse = GameDetailResponse.EntityToDTO(gameEntity);
+        return Response.status(Response.Status.OK).entity(gameDetailResponse).build();
+    }
 }

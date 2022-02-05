@@ -1,4 +1,5 @@
 package fr.epita.assistant.jws.domain.service;
 
-public class MapService {
+public class MapService
+{
 }

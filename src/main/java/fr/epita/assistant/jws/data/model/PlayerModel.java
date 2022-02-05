@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 @Entity @Table(name = "player")
 @AllArgsConstructor @NoArgsConstructor @With
+@Getter @Setter
 public class PlayerModel
 {
     public @Id @GeneratedValue(strategy = GenerationType.IDENTITY) Long id;
