@@ -23,6 +23,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +36,8 @@ public class GameEndpoint
     @Inject PlayerService playerService;
 
     @ConfigProperty(name="JWS_TICK_DURATION") int JWS_TICK_DURATION;
+    @ConfigProperty(name="JWS_DELAY_BOMB") int JWS_DELAY_BOMB;
+    @ConfigProperty(name="JWS_DELAY_MOVEMENT") int JWS_DELAY_MOVEMENT;
 
     @GET
     public List<GameListReponse> getAllGames()
@@ -154,8 +157,10 @@ public class GameEndpoint
                         playerEntity.coord.y != putBombRequest.posY)
             return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
 
+
         if (playerEntity.lastBomb != null)
-            if (LocalDateTime.now().minusSeconds(JWS_TICK_DURATION / 1000L).isBefore(playerEntity.lastBomb))
+            if (LocalDateTime.now().minusSeconds((JWS_TICK_DURATION / 1000L) * JWS_DELAY_BOMB).isBefore(playerEntity.lastBomb))
+            //if (Math.abs(ChronoUnit.MILLIS.between(LocalDateTime.now(), playerEntity.lastBomb)) < JWS_TICK_DURATION)
                 return Response.status(Response.Status.TOO_MANY_REQUESTS).build(); // ERROR 429
 
         try {
@@ -193,7 +198,8 @@ public class GameEndpoint
             return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
 
         if (playerEntity.lastMovement != null)
-            if (LocalDateTime.now().minusSeconds(JWS_TICK_DURATION / 1000L).isBefore(playerEntity.lastMovement))
+            if (LocalDateTime.now().minusSeconds((JWS_TICK_DURATION / 1000L) * JWS_DELAY_MOVEMENT).
+                    isBefore(playerEntity.lastMovement))
                 return Response.status(Response.Status.TOO_MANY_REQUESTS).build(); // ERROR 429
 
         try {

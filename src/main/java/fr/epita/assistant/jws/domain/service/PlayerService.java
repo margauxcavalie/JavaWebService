@@ -43,10 +43,7 @@ public class PlayerService
 
         }
         else if (position == 4)
-        {
-            //coords.x = 15;
             coords.y = 13;
-        }
 
         PlayerEntity playerEntity = new PlayerEntity()
                 .withName(player_name)
@@ -78,10 +75,6 @@ public class PlayerService
         PlayerModel playerModel = playerRepository.findById(playerId);
         GameModel gameModel = gameRepository.findById(gameId);
 
-        // Check state of the game
-        if (gameModel.state.equals(GameState.FINISHED))
-            throw new UnallowedMoveException();
-
         // Check Manhattan distance
         int manhattanDistance = Math.abs(movePlayerRequest.posX - playerModel.posX) +
                 Math.abs(movePlayerRequest.posY - playerModel.posY);
@@ -98,9 +91,6 @@ public class PlayerService
         playerModel.posX = movePlayerRequest.posX;
         playerModel.posY = movePlayerRequest.posY;
         playerModel.lastMovement = LocalDateTime.now();
-
-        /*playersSorted = gameModel.players.stream().sorted(Comparator.comparing(PlayerModel::getId));
-        gameModel.players = playersSorted.toList();*/
 
         return GameEntity.ModelToEntity(gameModel);
     }
