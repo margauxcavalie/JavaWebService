@@ -76,7 +76,11 @@ public class GameService
     public GameEntity startGame(Long id)
     {
         GameModel gameModel = gameRepository.findById(id);
-        gameModel.state = "RUNNING";
+        if (gameModel.players.size() > 1)
+            gameModel.state = "RUNNING";
+        else
+            gameModel.state = "FINISHED";
+
         return GameEntity.ModelToEntity(gameModel);
     }
 

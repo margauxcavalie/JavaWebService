@@ -6,6 +6,7 @@ import fr.epita.assistant.jws.data.repository.GameRepository;
 import fr.epita.assistant.jws.data.repository.MapRepository;
 import fr.epita.assistant.jws.data.repository.PlayerRepository;
 import fr.epita.assistant.jws.domain.entity.GameEntity;
+import fr.epita.assistant.jws.domain.entity.GameState;
 import fr.epita.assistant.jws.domain.entity.PlayerEntity;
 import fr.epita.assistant.jws.domain.service.exceptions.DifferentGamesException;
 import fr.epita.assistant.jws.domain.service.exceptions.NullPlayerException;
@@ -77,6 +78,10 @@ public class PlayerService
         PlayerModel playerModel = playerRepository.findById(playerId);
         GameModel gameModel = gameRepository.findById(gameId);
 
+        // Check state of the game
+        if (gameModel.state.equals(GameState.FINISHED))
+            throw new UnallowedMoveException();
+
         // Check Manhattan distance
         int manhattanDistance = Math.abs(movePlayerRequest.posX - playerModel.posX) +
                 Math.abs(movePlayerRequest.posY - playerModel.posY);
@@ -85,7 +90,8 @@ public class PlayerService
 
         // Check which tile it is
         String decodedMap = MapModel.decodeMapRLE(gameModel.map.get(movePlayerRequest.posY).map);
-        if (decodedMap.charAt(movePlayerRequest.posX) == 'W' || decodedMap.charAt(movePlayerRequest.posX) == 'B')
+        if (decodedMap.charAt(movePlayerRequest.posX) == 'W' || decodedMap.charAt(movePlayerRequest.posX) == 'B' ||
+                decodedMap.charAt(movePlayerRequest.posX) == 'M')
             throw new UnallowedMoveException();
 
         // Change position and lastMovement
