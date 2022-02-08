@@ -6,6 +6,7 @@ import fr.epita.assistant.jws.data.repository.GameRepository;
 import fr.epita.assistant.jws.data.repository.MapRepository;
 import fr.epita.assistant.jws.data.repository.PlayerRepository;
 import fr.epita.assistant.jws.domain.entity.GameEntity;
+import fr.epita.assistant.jws.domain.entity.GameState;
 import fr.epita.assistant.jws.domain.entity.PlayerEntity;
 import fr.epita.assistant.jws.domain.service.exceptions.DifferentGamesException;
 import fr.epita.assistant.jws.domain.service.exceptions.NullPlayerException;
@@ -35,10 +36,15 @@ public class PlayerService
         Point coords = new Point(1, 1);
         if (position == 2)
             coords.x = 15;
-        if (position == 3)
-            coords.y = 13;
-        if (position == 4) {
+        else if (position == 3)
+        {
             coords.x = 15;
+            coords.y = 13;
+
+        }
+        else if (position == 4)
+        {
+            //coords.x = 15;
             coords.y = 13;
         }
 
