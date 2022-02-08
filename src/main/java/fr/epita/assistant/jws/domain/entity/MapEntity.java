@@ -24,7 +24,7 @@ public class MapEntity
             map.add(mapModel.map);
         });
 
-        for (int i = 0; i < map.size() - 1; i++)
+        /*for (int i = 0; i < map.size() - 1; i++)
         {
             if (ids.get(i) > ids.get(i + 1))
             {
@@ -46,7 +46,7 @@ public class MapEntity
                     }
                 }
             }
-        }
+        }*/
 
         return new MapEntity().withMap(map).withIds(ids);
     }

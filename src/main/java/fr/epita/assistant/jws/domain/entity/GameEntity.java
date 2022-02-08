@@ -19,6 +19,25 @@ public class GameEntity
     {
         List<PlayerEntity> playerEntities = gameModel.players
                 .stream().map(PlayerEntity::ModelToEntity).toList();
+
+        /*for (int i = 0; i < playerEntities.size() - 1; i++)
+        {
+            if (playerEntities.get(i).id > playerEntities.get(i + 1).id)
+            {
+                int j = 0;
+                while (playerEntities.get(j).id < playerEntities.get(i + 1).id)
+                {
+                    j++;
+                }
+
+                PlayerEntity playerTemp = playerEntities.get(j);
+                playerEntities.remove(j);
+                playerEntities.add(j, playerEntities.get(i +1));
+                playerEntities.remove(i + 1);
+                playerEntities.add(i + 1, playerTemp);
+            }
+        }*/
+
         MapEntity mapEntity = MapEntity.ModelToEntity(gameModel.map);
         GameEntity gameEntity = new GameEntity()
                 .withId(gameModel.id)

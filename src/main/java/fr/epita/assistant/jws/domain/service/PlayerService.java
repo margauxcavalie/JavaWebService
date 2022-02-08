@@ -72,9 +72,6 @@ public class PlayerService
         PlayerModel playerModel = playerRepository.findById(playerId);
         GameModel gameModel = gameRepository.findById(gameId);
 
-        /*Stream<PlayerModel> playersSorted = gameModel.players.stream().sorted(Comparator.comparing(PlayerModel::getId));
-        gameModel.players = playersSorted.toList();*/
-
         // Check Manhattan distance
         int manhattanDistance = Math.abs(movePlayerRequest.posX - playerModel.posX) +
                 Math.abs(movePlayerRequest.posY - playerModel.posY);
