@@ -35,10 +35,15 @@ public class PlayerService
         Point coords = new Point(1, 1);
         if (position == 2)
             coords.x = 15;
-        if (position == 3)
-            coords.y = 13;
-        if (position == 4) {
+        else if (position == 3)
+        {
             coords.x = 15;
+            coords.y = 13;
+
+        }
+        else if (position == 4)
+        {
+            //coords.x = 15;
             coords.y = 13;
         }
 

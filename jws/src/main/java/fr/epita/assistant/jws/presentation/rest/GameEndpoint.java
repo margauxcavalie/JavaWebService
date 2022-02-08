@@ -1,4 +1,6 @@
 package fr.epita.assistant.jws.presentation.rest;
+import fr.epita.assistant.jws.data.model.GameModel;
+import fr.epita.assistant.jws.data.model.MapModel;
 import fr.epita.assistant.jws.domain.entity.GameEntity;
 import fr.epita.assistant.jws.domain.entity.GameState;
 import fr.epita.assistant.jws.domain.entity.PlayerEntity;
@@ -107,14 +109,14 @@ public class GameEndpoint
     public Response startGame(@PathParam("gameId")Long id)
     {
         GameEntity gameEntity = null;
-        try
-        {
+        try {
             gameEntity = gameService.getGameWithId(id);
+        } catch (UnknownGameException e) {
+            return Response.status(Response.Status.NOT_FOUND).build(); // ERROR 404
         }
-        catch (UnknownGameException e)
-        {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
+
+        if (gameEntity.state.equals(GameState.FINISHED))
+            return Response.status(Response.Status.NOT_FOUND).build(); // ERROR 404
 
         gameEntity = gameService.startGame(id);
 
@@ -127,12 +129,9 @@ public class GameEndpoint
                             @PathParam("playerId") Long playerId, PutBombRequest putBombRequest)
     {
         PlayerEntity playerEntity = null;
-        try
-        {
+        try {
             playerEntity = playerService.getPlayerWithId(playerId);
-        }
-        catch (NullPlayerException e)
-        {
+        } catch (NullPlayerException e) {
             return Response.status(Response.Status.NOT_FOUND).build(); //ERROR 404
         }
 
@@ -159,12 +158,9 @@ public class GameEndpoint
             if (LocalDateTime.now().minusSeconds(JWS_TICK_DURATION / 1000L).isBefore(playerEntity.lastBomb))
                 return Response.status(Response.Status.TOO_MANY_REQUESTS).build(); // ERROR 429
 
-        try
-        {
+        try {
             gameEntity = gameService.putBomb(gameId, playerId);
-        }
-        catch (DifferentGamesException e)
-        {
+        } catch (DifferentGamesException e) {
             return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
         }
 
@@ -194,14 +190,12 @@ public class GameEndpoint
         }
 
         // Check for errors
-        if (gameEntity.state.equals(GameState.FINISHED) ||
-                gameEntity.state.equals(GameState.STARTING) || playerEntity.lives <= 0)
+        if (!gameEntity.state.equals(GameState.RUNNING) || playerEntity.lives <= 0)
             return Response.status(Response.Status.BAD_REQUEST).build(); // ERROR 400
 
         if (playerEntity.lastMovement != null)
             if (LocalDateTime.now().minusSeconds(JWS_TICK_DURATION / 1000L).isBefore(playerEntity.lastMovement))
                 return Response.status(Response.Status.TOO_MANY_REQUESTS).build(); // ERROR 429
-
 
         try {
             gameEntity = playerService.movePlayer(playerId, gameId, movePlayerRequest);
